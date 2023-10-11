@@ -1,44 +1,58 @@
-﻿using Confluent.Kafka;
+﻿/*Nome: Igor Frederico Gomes Quaresma
+Professor: - (2751100) Desenvolvimento de Aplicações Distribuídas
+ Descricao: Implementar um producer, que vai enviar a mensagem para um tópico específico no Event Hub, utilizando c#
+ */
+
+using Confluent.Kafka;
 using Newtonsoft.Json;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
-namespace producer
+class Program
 {
-     class Program
+    static async Task Main(string[] args)
     {
-        static async Task Main(string[] args)
+        string brokerList = "puc-dad.servicebus.windows.net:9093";
+        string topicName = "dad-atividade-kafka";
+        string principal = "$ConnectionString";
+        string secret = "Endpoint=sb://puc-dad.servicebus.windows.net/;SharedAccessKeyName=aluno-dad;SharedAccessKey=Kds6a1hYMueVSSbu7bgiKXBpjBbzT4Kol+AEhNOt3FQ=";
+
+        var config = new ProducerConfig
         {
-            var config = new ProducerConfig
-            {
-                BootstrapServers = "dad-puc-igor.servicebus.windows.net:9093",
-                SecurityProtocol = SecurityProtocol.SaslSsl,
-                SaslMechanism = SaslMechanism.Plain,
-                SaslUsername = "$ConnectionString",
-                SaslPassword = "Endpoint=sb://dad-puc-igor.servicebus.windows.net/;SharedAccessKeyName=dad-kafka-producer;SharedAccessKey=xWfGw9nI8HyZFgEbgyNbj8AewW71x0NLl+AEhIRCKw8="
-            };
+            BootstrapServers = brokerList,
+            SaslMechanism = SaslMechanism.Plain,
+            SecurityProtocol = SecurityProtocol.SaslSsl,
+            SaslUsername = principal,
+            SaslPassword = secret,
 
-            var topic = "dad-kafka";
+        };
 
-            var message = new
+         var producer = new ProducerBuilder<string, string>(config).Build();
+
+        try
+        {
+            var data = new
             {
                 name = "Igor Frederico Gomes Quaresma",
                 login_id = "1366404@sga.pucminas.br",
                 group = 5
             };
 
-            using (var producer = new ProducerBuilder<string, string>(config).Build())
-            {
-                var jsonMessage = Newtonsoft.Json.JsonConvert.SerializeObject(message);
-                var deliveryReport = await producer.ProduceAsync(topic, new Message<string, string> { Key = null, Value = jsonMessage });
-                Console.WriteLine(jsonMessage);
-                Console.WriteLine($"Mensagem enviada para: {deliveryReport.TopicPartitionOffset}");
+            string jsonValue = JsonConvert.SerializeObject(data);
 
-                Console.ReadKey();
-            }
+            var message = new Message<string, string>
+            {
+                Key = null,
+                Value = jsonValue
+            };
+
+            var deliveryReport = await producer.ProduceAsync(topicName, message);
+            Console.WriteLine("Mensagem enviada: " + message.Value.ToString());
+            Console.WriteLine($"Mensagem enviada para: {deliveryReport.TopicPartitionOffset}");
+        }
+        catch (ProduceException<Null, string> e)
+        {
+            Console.WriteLine($"Erro ao enviar mensagem: {e.Error.Reason}");
         }
     }
 }
